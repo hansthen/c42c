@@ -13,11 +13,10 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
 TOKEN = os.getenv('C42_TOKEN')
-EXPIRY = 4.2
+EXPIRY = float(os.getenv('C42_EXPIRY') or 4.2)
 
 cache = {}
 lock = Lock()
-
 
 def cacheme(fn):
     def function(event_id):
@@ -40,16 +39,17 @@ class CleanupThread(Thread):
         self.stopped = event
 
     def run(self):
-        while not self.stopped.wait(1):
-            for key in cache:
-                expiry, value = cache[key]
-                if expiry < datetime.now():
-                    del cache[key]
+        while not self.stopped.wait(1.0):
+            try:
+                for key in cache:
+                    expiry, value = cache[key]
+                    if expiry < datetime.now():
+                        del cache[key]
+                        break
+            except RuntimeError:
+                pass
 
 
-headers = {'Accept': 'application/json',
-           'Content-type': 'application/json',
-           'Authorization': 'Token {}'.format(TOKEN)}
 title = parse('$.data[*].title')
 names = parse('$.data[*].subscriber.first_name')
 
@@ -57,6 +57,9 @@ names = parse('$.data[*].subscriber.first_name')
 @app.route('/events-with-subscriptions/<event_id>')
 @cacheme
 def events_with_subscriptions(event_id):
+    headers = {'Accept': 'application/json',
+               'Content-type': 'application/json',
+               'Authorization': 'Token {}'.format(TOKEN)}
     url_evt = 'https://demo.calendar42.com/api/v2/events/{}'.format(event_id)
     url_subs = 'https://demo.calendar42.com/api/v2/event-subscriptions/'
     response = requests.get(url_evt, headers=headers)
@@ -74,10 +77,14 @@ def events_with_subscriptions(event_id):
 
     return json.dumps(result)
 
+def main():
+    try:
+        stop = Event()
+        thread = CleanupThread(stop)
+        thread.start()
+        app.run()
+    finally:
+        stop.set()
 
 if __name__ == '__main__':
-    stop = Event()
-    thread = CleanupThread(stop)
-    thread.start()
-    app.run()
-    stop.set()
+    main()
