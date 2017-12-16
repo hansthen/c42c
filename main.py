@@ -12,11 +12,12 @@ logging.basicConfig(level=os.getenv('C42_LOGLEVEL') or 'INFO')
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
-TOKEN=os.getenv('C42_TOKEN')
-EXPIRY=4.2
+TOKEN = os.getenv('C42_TOKEN')
+EXPIRY = 4.2
 
 cache = {}
 lock = Lock()
+
 
 def cacheme(fn):
     def function(event_id):
@@ -32,6 +33,7 @@ def cacheme(fn):
                 return value
     return function
 
+
 def cleanup():
     for key in cache:
         expiry, value = cache[key]
@@ -40,11 +42,12 @@ def cleanup():
     sleep(1)
 
 
-headers = { 'Accept': 'application/json',
-            'Content-type': 'application/json',
-            'Authorization': 'Token {}'.format(TOKEN) }
+headers = {'Accept': 'application/json',
+           'Content-type': 'application/json',
+           'Authorization': 'Token {}'.format(TOKEN)}
 title = parse('$.data[*].title')
 names = parse('$.data[*].subscriber.first_name')
+
 
 @app.route('/events-with-subscriptions/<event_id>')
 @cacheme
@@ -56,13 +59,13 @@ def events_with_subscriptions(event_id):
         return response.text, response.status_code
 
     details = response.json()
-    payload = { 'event_ids': '[{}]'.format(event_id), 'limit': '10' }
+    payload = {'event_ids': '[{}]'.format(event_id), 'limit': '10'}
     response = requests.get(url_subs, headers=headers, params=payload)
     subs = response.json()
 
-    result = { 'id': event_id,
-               'title': title.find(details)[0].value,
-               'names': [name.value for name in names.find(subs)] }
+    result = {'id': event_id,
+              'title': title.find(details)[0].value,
+              'names': [name.value for name in names.find(subs)]}
 
     return json.dumps(result)
 
