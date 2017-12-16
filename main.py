@@ -2,7 +2,7 @@ from flask import Flask
 import requests
 import logging
 from datetime import datetime, timedelta
-from threading import Lock, Thread
+from threading import Lock, Thread, Event
 from time import sleep
 import json
 import os
@@ -34,12 +34,17 @@ def cacheme(fn):
     return function
 
 
-def cleanup():
-    for key in cache:
-        expiry, value = cache[key]
-        if expiry < datetime.now():
-            del cache[key]
-    sleep(1)
+class CleanupThread(Thread):
+    def __init__(self, event):
+        Thread.__init__(self)
+        self.stopped = event
+
+    def run(self):
+        while not self.stopped.wait(1):
+            for key in cache:
+                expiry, value = cache[key]
+                if expiry < datetime.now():
+                    del cache[key]
 
 
 headers = {'Accept': 'application/json',
@@ -71,5 +76,8 @@ def events_with_subscriptions(event_id):
 
 
 if __name__ == '__main__':
-    Thread(target=cleanup).start()
+    stop = Event()
+    thread = CleanupThread(stop)
+    thread.start()
     app.run()
+    stop.set()
