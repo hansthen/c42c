@@ -33,7 +33,7 @@ I did not know the actual data structures of the C42 services, but also because 
 suspect the json structures to be fairly simple. If there were more complicated 
 patterns or schemas involved I would normally use a jsonpath library (if I only
 need to extract a few values) or a json serialization library such as Munch 
-(if I need to manipulate the objects using their json structure.
+(if I need to manipulate the objects using their json structure).
 
 In the end I went with jsonpath anyway, as it made the code  prettier and it was just
 a few minutes extra work.
@@ -43,6 +43,10 @@ Web Framework
 I am more fond of flask than django, but not very religious about it. In particular
 I like decorator based routing more than the django routing approach.
 
-
-
+Error handling
+--------------
+Since this is a caching framework, I am a bit light on error handling. If one of the 
+services returns an error we just pass it through. In particular I assume that the error
+messages from the upstream services are safe to pass through and do not contain any
+security sensitive information.
 

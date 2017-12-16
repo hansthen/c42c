@@ -52,7 +52,9 @@ def events_with_subscriptions(event_id):
     url_evt = 'https://demo.calendar42.com/api/v2/events/{}'.format(event_id)
     url_subs = 'https://demo.calendar42.com/api/v2/event-subscriptions/'
     response = requests.get(url_evt, headers=headers)
-    response.raise_for_status()
+    if response.status_code != 200:
+        return response.text, response.status_code
+
     details = response.json()
     payload = { 'event_ids': '[{}]'.format(event_id), 'limit': '10' }
     response = requests.get(url_subs, headers=headers, params=payload)
