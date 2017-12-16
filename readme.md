@@ -1,5 +1,25 @@
 Introducton
 ==============
+This service is a combined cache for two calendar 42 apis.
+
+Setup
+-----
+I use a c42c virtualenv environment which I have setup in the root folder of the project.
+It is .gitignore. You can create one by calling `virtualenv c42c` and then activate it
+using `source c42c/bin/activate`.
+
+Once you have activated the virtualenv environment, you can install the required python
+packages using `pip install -r requirements.txt`.
+
+To configure the server you can use the following environment variables
+
+1. `C42_TOKEN` (mandatory)
+2. `C42_EXPIRY` (default 4.2 in minutes)
+3. `C42_LOGLEVEL` (default = INFO)
+
+The server can be started using `python main.py`.
+
+There are two test scripts: `test_cache.py` and `test_api.py`. No output is good.
 
 
 Design choices
@@ -9,7 +29,9 @@ Using an external caching service or not
 ----------------------------------------
 For such an project I would normally use an external caching service
 such as redis. However, I thought it would be more illustrative to implement
-the cache myself.
+the cache myself. There are some nice edge cases in relation with threading,
+locking and program termination. Since during my day job I hardly get to program
+this type of code, I also thought it'd be a nice exercise.
 
 Catching the KeyException (instead of checking the key first) is a bit ugly. I 
 try to avoid using Exceptions for normal control flow, but here it prevents a
@@ -25,6 +47,9 @@ and I briefly considered using it to trigger cache expiry events.
 However, it seemed overkill to add another dependency. Depending on the actual 
 requirements (what are the actual usage patterns? does expiry need to be 
 near real-time?), I might reconsider.
+
+We also cache negative results. This can be awkward sometimes, but is also a good
+defence against malfunctioning programs that spam random keys.
 
 Json handling
 -------------
