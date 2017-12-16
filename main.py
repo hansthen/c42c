@@ -5,12 +5,14 @@ from datetime import datetime, timedelta
 from threading import Lock, Thread
 from time import sleep
 import json
+import os
+from jsonpath_ng import parse
 
-logging.basicConfig(level='DEBUG')
+logging.basicConfig(level=os.getenv('C42_LOGLEVEL') or 'INFO')
 logger = logging.getLogger(__name__)
 app = Flask(__name__)
 
-TOKEN='d6126cc0239dcdc1b300bf34b8dcf2ea3a303901'
+TOKEN=os.getenv('C42_TOKEN')
 EXPIRY=4.2
 
 cache = {}
@@ -23,7 +25,9 @@ def cacheme(fn):
                 _, value = cache[event_id]
                 return value
             except KeyError:
-                expiry, value = (datetime.now() + timedelta(minutes=EXPIRY), fn(event_id))
+                expiry, value = (datetime.now() + timedelta(minutes=EXPIRY),
+                                 fn(event_id))
+
                 cache[event_id] = (expiry, value)
                 return value
     return function
@@ -36,12 +40,15 @@ def cleanup():
     sleep(1)
 
 
+headers = { 'Accept': 'application/json',
+            'Content-type': 'application/json',
+            'Authorization': 'Token {}'.format(TOKEN) }
+title = parse('$.data[*].title')
+names = parse('$.data[*].subscriber.first_name')
+
 @app.route('/events-with-subscriptions/<event_id>')
 @cacheme
 def events_with_subscriptions(event_id):
-    headers = { 'Accept': 'application/json',
-                'Content-type': 'application/json',
-                'Authorization': 'Token {}'.format(TOKEN) }
     url_evt = 'https://demo.calendar42.com/api/v2/events/{}'.format(event_id)
     url_subs = 'https://demo.calendar42.com/api/v2/event-subscriptions/'
     response = requests.get(url_evt, headers=headers)
@@ -52,8 +59,8 @@ def events_with_subscriptions(event_id):
     subs = response.json()
 
     result = { 'id': event_id,
-               'title': details['data'][0]['title'],
-               'names': ["{last_name}, {first_name}".format(**sub['actor']) for sub in subs['data']] }
+               'title': title.find(details)[0].value,
+               'names': [name.value for name in names.find(subs)] }
 
     return json.dumps(result)
 
